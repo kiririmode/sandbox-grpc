@@ -3,9 +3,12 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"os"
 	"time"
+
+	"github.com/golang/protobuf/ptypes"
 
 	"github.com/kiririmode/sandbox-grpc/greeter"
 	"google.golang.org/grpc"
@@ -14,6 +17,7 @@ import (
 const (
 	address     = "localhost:50050"
 	defaultName = "world"
+	timeout     = 20 * time.Second
 )
 
 func main() {
@@ -31,24 +35,21 @@ func main() {
 		name = os.Args[1]
 	}
 
-	done := make(chan interface{})
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	time.AfterFunc(10*time.Second, func() { close(done) })
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	stream, err := c.SayHellos(ctx, &greeter.HelloRequest{Name: name})
+	if err != nil {
+		log.Fatalf("could not greet: %v", err)
+	}
 
 	for {
-		select {
-		case <-done:
-			return
-		case t := <-ticker.C:
-			log.Println("Current time: ", t)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			r, err := c.SayHello(ctx, &greeter.HelloRequest{Name: name})
-			if err != nil {
-				log.Fatalf("could not greet: %v", err)
-			}
-			log.Printf("Greeting: %s", r.Message)
+		r, err := stream.Recv()
+		if err == io.EOF {
+			break
 		}
+		if err != nil {
+			log.Fatalf("SayHellos: %v", err)
+		}
+		log.Printf("Greeting: %s at %s", r.Message, ptypes.TimestampString(r.Timestamp))
 	}
 }

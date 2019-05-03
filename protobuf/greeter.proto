@@ -1,16 +1,19 @@
 syntax = 'proto3';
 
+import "google/protobuf/timestamp.proto";
+
 service Greeter {
-  // Sends a greeting
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+  // Unary RPC: Sends a greeting
+  rpc SayHello(HelloRequest) returns (HelloReply) {}
+  // Server Streaming RPC: Sends a greeing with timestamp
+  rpc SayHellos(HelloRequest) returns (stream HelloReply) {}
 }
 
 // The request message containing the user's name.
-message HelloRequest {
-  string name = 1;
-}
+message HelloRequest { string name = 1; }
 
 // The response message containing the greetings
 message HelloReply {
-  string message = 1;
+  google.protobuf.Timestamp timestamp = 1;
+  string message = 2;
 }
