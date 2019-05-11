@@ -1,12 +1,15 @@
 syntax = 'proto3';
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
 service Greeter {
   // Unary RPC: Sends a greeting
   rpc SayHello(HelloRequest) returns (HelloReply) {}
   // Server Streaming RPC: Sends a greeing with timestamp
   rpc SayHellos(HelloRequest) returns (stream HelloReply) {}
+  // only acquire global lock, and don't release it.
+  rpc AcquireLock(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // The request message containing the user's name.

@@ -3,12 +3,11 @@ package main
 
 import (
 	"context"
-	"io"
 	"log"
-	"os"
+	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/empty"
 
 	"github.com/kiririmode/sandbox-grpc/greeter"
 	"google.golang.org/grpc"
@@ -29,27 +28,21 @@ func main() {
 	defer conn.Close()
 	c := greeter.NewGreeterClient(conn)
 
-	// Contact the server and print out its response.
-	name := defaultName
-	if len(os.Args) > 1 {
-		name = os.Args[1]
-	}
+	limit := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+	for i := 0; i < 1000000; i++ {
+		wg.Add(1)
+		go func(i int) {
+			limit <- struct{}{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	stream, err := c.SayHellos(ctx, &greeter.HelloRequest{Name: name})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+			log.Printf("acquireLock: %d", i)
+			_, err := c.AcquireLock(context.Background(), &empty.Empty{})
+			if err != nil {
+				log.Fatalf("AcquireLock: %v", err)
+			}
+			wg.Done()
+			<-limit
+		}(i)
 	}
-
-	for {
-		r, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatalf("SayHellos: %v", err)
-		}
-		log.Printf("Greeting: %s at %s", r.Message, ptypes.TimestampString(r.Timestamp))
-	}
+	wg.Wait()
 }
