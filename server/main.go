@@ -2,6 +2,7 @@
 package main
 
 import (
+	"google.golang.org/grpc/keepalive"
 	"context"
 	"log"
 	"net"
@@ -84,7 +85,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime: 2 * time.Second,
+			PermitWithoutStream: true,
+		}))
 	greeter.RegisterGreeterServer(s, &server{})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
